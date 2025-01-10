@@ -1,55 +1,52 @@
-name: Deploy Lambda Functions
+name: Deploy Lambda Function
 
 on:
   push:
-    branches: [ main ]
+    paths:
+      - 'lambdas/final/**'
+      - 'lambdas/fall_detection/**'
+      - '.github/workflows/deploy.yml' # Optional: Re-run for workflow updates
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
+      # Check out the repository
+      - uses: actions/checkout@v2
 
+      # Identify the changed directory
+      - name: Determine Changed Directory
+        id: detect-changes
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -q 'lambdas/final/'; then
+            echo "lambda_path=lambdas/final" >> $GITHUB_ENV
+            echo "lambda_name=final" >> $GITHUB_ENV
+          elif git diff --name-only HEAD~1 HEAD | grep -q 'lambdas/fall_detection/'; then
+            echo "lambda_path=lambdas/fall_detection" >> $GITHUB_ENV
+            echo "lambda_name=fall_detection" >> $GITHUB_ENV
+          else
+            echo "No relevant changes found."
+            exit 0
+
+      # Install zip tool
       - name: Install zip tool
-        run: sudo apt-get install -y zip
+        run: sudo apt-get install zip -y
 
-      - name: Identify Changed Lambda Functions
-        id: changes
+      # Create Zip file for the changed Lambda function
+      - name: Create Zip file
         run: |
-          BEFORE_SHA=${{ github.event.before }}
-          AFTER_SHA=${{ github.sha }}
+          cd ${{ env.lambda_path }}
+          zip -r ../code.zip .
 
-          # Handle cases where BEFORE_SHA is missing (e.g., first commit or new branch)
-          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ] || ! git rev-parse $BEFORE_SHA >/dev/null 2>&1; then
-            echo "No previous commit. Using HEAD~1 as fallback."
-            BEFORE_SHA=$AFTER_SHA~1
-          fi
-
-          # Identify changed Lambda function paths
-          CHANGED_PATHS=$(git diff --name-only $BEFORE_SHA $AFTER_SHA | grep 'lambdas/.*/lambda_function.py$')
-          echo "CHANGED_PATHS=$CHANGED_PATHS"
-          echo "CHANGED_PATHS=$CHANGED_PATHS" >> $GITHUB_ENV
-
-      - name: Deploy Changed Lambda Functions
-        if: env.CHANGED_PATHS != ''
-        run: |
-          for PATH in $(echo $CHANGED_PATHS | tr " " "\n" | xargs -n1 dirname | sort -u); do
-            FUNCTION_NAME=$(basename $PATH)
-            echo "Deploying $FUNCTION_NAME..."
-
-            # Create a zip file for the Lambda function
-            cd $PATH
-            zip -r9 /tmp/$FUNCTION_NAME.zip .
-            cd -
-
-            # Update the Lambda function
-            aws lambda update-function-code \
-              --function-name $FUNCTION_NAME \
-              --zip-file fileb:///tmp/$FUNCTION_NAME.zip
-          done
+      # Update Lambda function code on AWS
+      - name: AWS CLI v2
+        uses: imehedi/actions-awscli-v2@latest
+        with:
+          args: |
+            lambda update-function-code \
+              --function-name arn:aws:lambda:eu-north-1:145023099892:function:${{ env.lambda_name }} \
+              --zip-file fileb://lambdas/code.zip
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: "eu-north-1"
+          AWS_DEFAULT_REGION: "us-east-1"
