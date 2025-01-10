@@ -18,7 +18,18 @@ jobs:
       - name: Identify Changed Lambda Functions
         id: changes
         run: |
-          CHANGED_PATHS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep 'lambdas/.*/lambda_function.py$')
+          BEFORE_SHA=${{ github.event.before }}
+          AFTER_SHA=${{ github.sha }}
+
+          # Handle cases where BEFORE_SHA is missing (e.g., first commit or new branch)
+          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ] || ! git rev-parse $BEFORE_SHA >/dev/null 2>&1; then
+            echo "No previous commit. Using HEAD~1 as fallback."
+            BEFORE_SHA=$AFTER_SHA~1
+          fi
+
+          # Identify changed Lambda function paths
+          CHANGED_PATHS=$(git diff --name-only $BEFORE_SHA $AFTER_SHA | grep 'lambdas/.*/lambda_function.py$')
+          echo "CHANGED_PATHS=$CHANGED_PATHS"
           echo "CHANGED_PATHS=$CHANGED_PATHS" >> $GITHUB_ENV
 
       - name: Deploy Changed Lambda Functions
