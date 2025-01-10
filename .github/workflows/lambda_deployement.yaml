@@ -2,51 +2,45 @@ name: Deploy Lambda Function
 
 on:
   push:
+    branches: [ main ]
     paths:
-      - 'lambdas/final/**'
-      - 'lambdas/fall_detection/**'
-      - '.github/workflows/deploy.yml' # Optional: Re-run for workflow updates
+      - 'lambdas/final/**'     # Triggers on changes in final lambda
+      - 'lambdas/fall_detection/**'  # Triggers on changes in fall_detection lambda
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      # Check out the repository
       - uses: actions/checkout@v2
-
-      # Identify the changed directory
-      - name: Determine Changed Directory
-        id: detect-changes
-        run: |
-          if git diff --name-only HEAD~1 HEAD | grep -q 'lambdas/final/'; then
-            echo "lambda_path=lambdas/final" >> $GITHUB_ENV
-            echo "lambda_name=final" >> $GITHUB_ENV
-          elif git diff --name-only HEAD~1 HEAD | grep -q 'lambdas/fall_detection/'; then
-            echo "lambda_path=lambdas/fall_detection" >> $GITHUB_ENV
-            echo "lambda_name=fall_detection" >> $GITHUB_ENV
-          else
-            echo "No relevant changes found."
-            exit 0
-
-      # Install zip tool
+      
       - name: Install zip tool
-        run: sudo apt-get install zip -y
+        uses: montudor/action-zip@v1
 
-      # Create Zip file for the changed Lambda function
-      - name: Create Zip file
+      # Determine which lambda has changed and create a zip file accordingly
+      - name: Create Zip file for final Lambda function
+        if: github.event.head_commit.modified | contains('lambdas/final')
         run: |
-          cd ${{ env.lambda_path }}
-          zip -r ../code.zip .
+          cd lambdas/final
+          zip -r ../final.zip .
 
-      # Update Lambda function code on AWS
+      - name: Create Zip file for fall_detection Lambda function
+        if: github.event.head_commit.modified | contains('lambdas/fall_detection')
+        run: |
+          cd lambdas/fall_detection
+          zip -r ../fall_detection.zip .
+
       - name: AWS CLI v2
         uses: imehedi/actions-awscli-v2@latest
         with:
           args: |
             lambda update-function-code \
-              --function-name arn:aws:lambda:eu-north-1:145023099892:function:${{ env.lambda_name }} \
-              --zip-file fileb://lambdas/code.zip
+              --function-name arn:aws:lambda:eu-north-1:145023099892:function:final \
+              --zip-file fileb://final.zip
+            lambda update-function-code \
+              --function-name arn:aws:lambda:eu-north-1:145023099892:function:fall-detection \
+              --zip-file fileb://fall_detection.zip
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: "us-east-1"
+          AWS_DEFAULT_REGION: "eu-north-1"
