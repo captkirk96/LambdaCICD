@@ -1,4 +1,4 @@
-name: Deploy Lambda Function
+name: Deploy Lambda Functions
 
 on:
   push:
@@ -9,17 +9,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
       - name: Install zip tool
-        uses: montudor/action-zip@v1
-      - name: Create Zip file for Lambda function
-        run: zip -r code.zip .
-      - name: AWS CLI v2
-        uses: imehedi/actions-awscli-v2@latest
-        with:
-          args: "lambda update-function-code \
-            --function-name arn:aws:lambda:eu-north-1:145023099892:function:final \
-            --zip-file fileb://code.zip"
+        run: sudo apt-get install -y zip
+
+      - name: Identify Changed Lambda Functions
+        id: changes
+        run: |
+          CHANGED_PATHS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep 'lambdas/.*/lambda_function.py$')
+          echo "CHANGED_PATHS=$CHANGED_PATHS" >> $GITHUB_ENV
+
+      - name: Deploy Changed Lambda Functions
+        if: env.CHANGED_PATHS != ''
+        run: |
+          for PATH in $(echo $CHANGED_PATHS | tr " " "\n" | xargs -n1 dirname | sort -u); do
+            FUNCTION_NAME=$(basename $PATH)
+            echo "Deploying $FUNCTION_NAME..."
+
+            # Create a zip file for the Lambda function
+            cd $PATH
+            zip -r9 /tmp/$FUNCTION_NAME.zip .
+            cd -
+
+            # Update the Lambda function
+            aws lambda update-function-code \
+              --function-name $FUNCTION_NAME \
+              --zip-file fileb:///tmp/$FUNCTION_NAME.zip
+          done
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
