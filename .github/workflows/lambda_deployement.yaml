@@ -11,6 +11,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2 # Fetch the last two commits to compare changes
 
       - name: Install zip tool
         uses: montudor/action-zip@v1
