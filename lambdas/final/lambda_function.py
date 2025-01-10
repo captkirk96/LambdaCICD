@@ -127,7 +127,7 @@ def lambda_handler(event, context):
         upload_json_to_s3(target_bucket_name, json_key, result)
 
         return {
-            "message": "Processing completed successfull",
+            "message": "Processing completed successfullY",
             "result": result
         }
 

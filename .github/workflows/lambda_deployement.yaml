@@ -17,15 +17,16 @@ jobs:
       - name: Install zip tool
         uses: montudor/action-zip@v1
 
-      # Determine which lambda has changed and create a zip file accordingly
+      # Create Zip file for final Lambda function if it has been modified
       - name: Create Zip file for final Lambda function
-        if: github.event.head_commit.modified | contains('lambdas/final')
+        if: contains(github.event.head_commit.modified, 'lambdas/final')
         run: |
           cd lambdas/final
           zip -r ../final.zip .
 
+      # Create Zip file for fall_detection Lambda function if it has been modified
       - name: Create Zip file for fall_detection Lambda function
-        if: github.event.head_commit.modified | contains('lambdas/fall_detection')
+        if: contains(github.event.head_commit.modified, 'lambdas/fall_detection')
         run: |
           cd lambdas/fall_detection
           zip -r ../fall_detection.zip .
@@ -38,7 +39,7 @@ jobs:
               --function-name arn:aws:lambda:eu-north-1:145023099892:function:final \
               --zip-file fileb://final.zip
             lambda update-function-code \
-              --function-name arn:aws:lambda:eu-north-1:145023099892:function:fall-detection \
+              --function-name arn:aws:lambda:eu-north-1:145023099892:function:fall_detection \
               --zip-file fileb://fall_detection.zip
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
