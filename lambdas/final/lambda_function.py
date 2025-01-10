@@ -111,7 +111,7 @@ def lambda_handler(event, context):
 
         # Clean up the temporary file
         os.unlink(temp_file.name)
-        print(f"DEBUG: Temporary file {temp_file.name} deleted_also")
+        print(f"DEBUG: Temporary file {temp_file.name} deleted")
 
         # Prepare JSON result
         result = {
