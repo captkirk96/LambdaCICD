@@ -137,7 +137,7 @@ def lambda_handler(event, context):
         return {
             'statusCode': 200,
             'body': json.dumps({
-                'message': 'Video processing complete',
+                'message': 'Video processing complet',
                 'frames_processed': len(metrics)
             })
         }
