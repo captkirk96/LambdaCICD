@@ -17,11 +17,11 @@ jobs:
       - name: Install zip tool
         uses: montudor/action-zip@v1
 
-      - name: Identify modified Lambda function
+      - name: Identify modified Lambda functions
         id: detect
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep -E '^lambdas/[^/]+/lambda_function.py$' || true)
-          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+          echo "CHANGED_FILES=$(echo $CHANGED_FILES | tr '\n' ' ')" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
       - name: Deploy Lambda functions
