@@ -169,7 +169,7 @@ def lambda_handler(event, context):
             print(f"DEBUG: Error in Lambda function - {e}")
             return {
                 "error": str(e),
-                "message": "Error processing the event"
+                "message": "Error processing the event."
             }
 
         # except Exception as e:
