@@ -97,7 +97,7 @@ def lambda_handler(event, context):
         print(f"DEBUG: Processing file {key} from bucket {bucket_name}")
 
         # Target bucket for JSON file
-        target_bucket_name = "detect-humans-result"
+        target_bucket_name = "intermediate-sequential-bucket-nht"
 
         # Download the image from S3
         temp_file = download_image_from_s3(bucket_name, key)
@@ -127,7 +127,7 @@ def lambda_handler(event, context):
         upload_json_to_s3(target_bucket_name, json_key, result)
 
         return {
-            "message": "Processing completed successfull",
+            "message": "Processing completed successfully.",
             "result": result
         }
 
@@ -135,5 +135,5 @@ def lambda_handler(event, context):
         print(f"DEBUG: Error in Lambda function - {e}")
         return {
             "error": str(e),
-            "message": "Error processing the evenT"
+            "message": "Error processing the event."
         }

@@ -138,7 +138,7 @@ def lambda_handler(event, context):
 
         # Check if the combined JSON file exists in the "final-output1" bucket
         try:
-            combined_json_file = download_file_from_s3("final-output1", directory_name)
+            combined_json_file = download_file_from_s3("final-output-nht", directory_name)
             with open(combined_json_file.name, 'r') as f:
                 combined_json = json.load(f)
         except Exception:
@@ -157,7 +157,7 @@ def lambda_handler(event, context):
             json.dump(combined_json, f)
 
         # Upload the updated JSON to the "final-output1" bucket
-        upload_file_to_s3(updated_json_file.name, "final-output1", directory_name)
+        upload_file_to_s3(updated_json_file.name, "final-output-nht", directory_name)
 
         # Clean up temporary files
         # os.unlink(json_file.name)
@@ -166,9 +166,9 @@ def lambda_handler(event, context):
         # print(f"DEBUG: Temporary files deleted")
 
         return {
-            "bucket_name": "final-output1",
+            "bucket_name": "final-output-nht",
             "updated_json": directory_name,
-            "message": "Combined JSON file updated successfully"
+            "message": "Combined JSON file updated successfully."
         }
 
     except Exception as e:

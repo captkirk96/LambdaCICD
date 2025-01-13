@@ -32,11 +32,11 @@ jobs:
             cd $(dirname $file)
             zip -r code.zip .
             aws lambda update-function-code \
-              --function-name arn:aws:lambda:eu-north-1:145023099892:function:$FUNCTION_NAME \
+              --function-name arn:aws:lambda:ap-south-1:278699821793:function:$FUNCTION_NAME \
               --zip-file fileb://code.zip
             cd -
           done
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: "eu-north-1"
+          AWS_DEFAULT_REGION: "ap-south-1"

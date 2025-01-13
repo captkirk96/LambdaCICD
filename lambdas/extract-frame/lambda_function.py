@@ -8,7 +8,7 @@ import numpy as np
 s3_client = boto3.client('s3')
 
 def calculate_mad(frame1, frame2):
-    """Calculate Mean Absolute Difference (MAD) between two frames."""
+    """Calculate Mean Absolute Difference (MAD) between two frames"""
     return np.mean(np.abs(frame1 - frame2))
 
 def calculate_ssim(frame1, frame2):
@@ -129,7 +129,7 @@ def lambda_handler(event, context):
         input_key = record['s3']['object']['key']
         
         # Define a fixed output bucket
-        output_bucket = "detect-humans"
+        output_bucket = "frames-nht"
         
         # Process the video
         metrics = process_video(input_bucket, input_key, output_bucket)

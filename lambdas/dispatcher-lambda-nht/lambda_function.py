@@ -13,9 +13,9 @@ def lambda_handler(event, context):
     
     # List of target Lambda functions to invoke
     target_functions = [
-        "arn:aws:lambda:eu-north-1:145023099892:function:fall-detection",
-        "arn:aws:lambda:eu-north-1:145023099892:function:fire-detection",
-        "arn:aws:lambda:eu-north-1:145023099892:function:final"
+        "arn:aws:lambda:ap-south-1:278699821793:function:fall-detection-nht",
+        "arn:aws:lambda:ap-south-1:278699821793:function:fire-detection-nht",
+        "arn:aws:lambda:ap-south-1:278699821793:function:person-detection-nht"
     ]
     
     # Loop through and invoke each Lambda function asynchronously
