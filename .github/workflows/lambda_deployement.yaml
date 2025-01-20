@@ -3,7 +3,7 @@ name: Deploy Lambda Function
 on:
   push:
     paths:
-      - 'lambdas/**' # Trigger workflow only for changes inside the 'lambdas' directory
+      - 'lambdas/**' # Trigger workflow for any changes in the 'lambdas' directory
 
 jobs:
   deploy:
@@ -20,19 +20,18 @@ jobs:
       - name: Identify modified Lambda functions
         id: detect
         run: |
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep -E '^lambdas/[^/]+/lambda_function.py$' || true)
-          echo "CHANGED_FILES=$(echo $CHANGED_FILES | tr '\n' ' ')" >> $GITHUB_ENV
-          echo "Changed files: $CHANGED_FILES"
+          CHANGED_FOLDERS=$(git diff --name-only HEAD^ HEAD | grep -E '^lambdas/[^/]+/' | awk -F'/' '{print $2}' | sort | uniq || true)
+          echo "CHANGED_FOLDERS=$(echo $CHANGED_FOLDERS | tr '\n' ' ')" >> $GITHUB_ENV
+          echo "Changed folders: $CHANGED_FOLDERS"
 
       - name: Deploy Lambda functions
-        if: env.CHANGED_FILES
+        if: env.CHANGED_FOLDERS
         run: |
-          for file in $CHANGED_FILES; do
-            FUNCTION_NAME=$(basename $(dirname $file))
-            cd $(dirname $file)
+          for folder in $CHANGED_FOLDERS; do
+            cd lambdas/$folder
             zip -r code.zip .
             aws lambda update-function-code \
-              --function-name arn:aws:lambda:ap-south-1:278699821793:function:$FUNCTION_NAME \
+              --function-name arn:aws:lambda:ap-south-1:278699821793:function:$folder \
               --zip-file fileb://code.zip
             cd -
           done
