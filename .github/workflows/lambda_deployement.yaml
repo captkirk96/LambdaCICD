@@ -20,8 +20,8 @@ jobs:
       - name: Identify modified Lambda functions
         id: detect
         run: |
-          # Identify all modified files under 'lambdas', then extract the second-level folder names
-          CHANGED_FUNCTIONS=$(git diff --name-only HEAD^ HEAD | grep '^lambdas/' | awk -F'/' '{print $2}' | sort | uniq)
+          # Identify all modified files under 'lambdas', then extract second-level folder names
+          CHANGED_FUNCTIONS=$(git diff --name-only HEAD^ HEAD | grep '^lambdas/' | awk -F'/' 'NF==3 {print $2}' | sort | uniq)
           echo "CHANGED_FUNCTIONS=$(echo $CHANGED_FUNCTIONS | tr '\n' ' ')" >> $GITHUB_ENV
           echo "Changed functions: $CHANGED_FUNCTIONS"
 
@@ -29,6 +29,7 @@ jobs:
         if: env.CHANGED_FUNCTIONS
         run: |
           for function_name in $CHANGED_FUNCTIONS; do
+            echo "Deploying function: $function_name"
             # Navigate to the corresponding Lambda function folder
             cd lambdas/$function_name
             # Create a deployment package
@@ -37,7 +38,7 @@ jobs:
             aws lambda update-function-code \
               --function-name arn:aws:lambda:ap-south-1:278699821793:function:$function_name \
               --zip-file fileb://code.zip
-            # Go back to the previous directory
+            # Return to the previous directory
             cd - >/dev/null
           done
         env:
