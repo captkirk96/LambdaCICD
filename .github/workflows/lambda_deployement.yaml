@@ -21,6 +21,7 @@ jobs:
       - name: Identify modified Lambda functions
         id: detect
         run: |
+          # Identify all modified files in the lambdas folder
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep -E '^lambdas/.*/.*$' || true)
           echo "CHANGED_FILES=$(echo $CHANGED_FILES | tr '\n' ' ')" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
@@ -29,8 +30,8 @@ jobs:
         if: env.CHANGED_FILES
         run: |
           for file in $CHANGED_FILES; do
-            # Get the folder name above the lambda_function.py file
-            FUNCTION_NAME=$(echo $file | awk -F'/' '{print $(NF-2)}')
+            # Get the folder name above the changed file
+            FUNCTION_NAME=$(echo $file | awk -F'/' '{print $2}')
             cd lambdas/$FUNCTION_NAME
             zip -r code.zip .
             aws lambda update-function-code \
