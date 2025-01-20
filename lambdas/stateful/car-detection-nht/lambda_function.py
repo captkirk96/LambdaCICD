@@ -121,7 +121,7 @@ def lambda_handler(event, context):
         return {
             "bucket_name": "final-output-nht",
             "updated_json": directory_name,
-            "message": "Combined JSON file updated successfully"
+            "message": "Combined JSON file updated successful"
         }
 
     except Exception as e:

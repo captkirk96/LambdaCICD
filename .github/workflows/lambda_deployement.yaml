@@ -20,20 +20,25 @@ jobs:
       - name: Identify modified Lambda functions
         id: detect
         run: |
-          CHANGED_FOLDERS=$(git diff --name-only HEAD^ HEAD | grep -E '^lambdas/[^/]+/' | awk -F'/' '{print $2}' | sort | uniq || true)
-          echo "CHANGED_FOLDERS=$(echo $CHANGED_FOLDERS | tr '\n' ' ')" >> $GITHUB_ENV
-          echo "Changed folders: $CHANGED_FOLDERS"
+          # Identify all modified files under 'lambdas', then extract the second-level folder names
+          CHANGED_FUNCTIONS=$(git diff --name-only HEAD^ HEAD | grep '^lambdas/' | awk -F'/' '{print $2}' | sort | uniq)
+          echo "CHANGED_FUNCTIONS=$(echo $CHANGED_FUNCTIONS | tr '\n' ' ')" >> $GITHUB_ENV
+          echo "Changed functions: $CHANGED_FUNCTIONS"
 
       - name: Deploy Lambda functions
-        if: env.CHANGED_FOLDERS
+        if: env.CHANGED_FUNCTIONS
         run: |
-          for folder in $CHANGED_FOLDERS; do
-            cd lambdas/$folder
+          for function_name in $CHANGED_FUNCTIONS; do
+            # Navigate to the corresponding Lambda function folder
+            cd lambdas/$function_name
+            # Create a deployment package
             zip -r code.zip .
+            # Update the AWS Lambda function
             aws lambda update-function-code \
-              --function-name arn:aws:lambda:ap-south-1:278699821793:function:$folder \
+              --function-name arn:aws:lambda:ap-south-1:278699821793:function:$function_name \
               --zip-file fileb://code.zip
-            cd -
+            # Go back to the previous directory
+            cd - >/dev/null
           done
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
