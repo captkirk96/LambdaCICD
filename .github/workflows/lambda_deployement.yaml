@@ -3,41 +3,45 @@ name: Deploy Lambda Function
 on:
   push:
     paths:
-      - 'lambdas/**' # Trigger workflow for changes in any file within the 'lambdas' directory
+      - 'lambdas/**' # Trigger workflow for changes in any file within 'lambdas' directory
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      # Step to check out the repository
+      - uses: actions/checkout@v2
         with:
           fetch-depth: 2 # Fetch the last two commits to compare changes
 
+      # Install zip tool
       - name: Install zip tool
         uses: montudor/action-zip@v1
 
+      # Identify modified Lambda functions
       - name: Identify modified Lambda functions
         id: detect
         run: |
-          # Identify all modified files in the lambdas folder
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep -E '^lambdas/.*/.*$' || true)
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep -E '^lambdas/.+/.*$' || true)
           echo "CHANGED_FILES=$(echo $CHANGED_FILES | tr '\n' ' ')" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
+      # Deploy Lambda functions
       - name: Deploy Lambda functions
         if: env.CHANGED_FILES
         run: |
           for file in $CHANGED_FILES; do
-            # Get the folder name above the changed file
-            FUNCTION_NAME=$(echo $file | awk -F'/' '{print $2}')
-            cd lambdas/$FUNCTION_NAME
-            zip -r code.zip .
-            aws lambda update-function-code \
-              --function-name arn:aws:lambda:ap-south-1:278699821793:function:$FUNCTION_NAME \
-              --zip-file fileb://code.zip
-            cd -
+            # Derive the folder above lambda_function.py as the FUNCTION_NAME
+            if [[ $file == *"lambda_function.py" ]]; then
+              FUNCTION_NAME=$(basename $(dirname $file))
+              cd $(dirname $file)
+              zip -r code.zip .
+              aws lambda update-function-code \
+                --function-name arn:aws:lambda:ap-south-1:278699821793:function:$FUNCTION_NAME \
+                --zip-file fileb://code.zip
+              cd -
+            fi
           done
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
