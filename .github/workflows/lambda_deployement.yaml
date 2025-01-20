@@ -3,14 +3,15 @@ name: Deploy Lambda Function
 on:
   push:
     paths:
-      - 'lambdas/**' # Trigger workflow for any changes in the 'lambdas' directory
+      - 'lambdas/**' # Trigger workflow for changes in any file within the 'lambdas' directory
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
         with:
           fetch-depth: 2 # Fetch the last two commits to compare changes
 
@@ -20,40 +21,22 @@ jobs:
       - name: Identify modified Lambda functions
         id: detect
         run: |
-          echo "Finding modified files..."
-          # List all modified files under 'lambdas/'
-          MODIFIED_FILES=$(git diff --name-only HEAD^ HEAD | grep '^lambdas/' || true)
-          echo "Modified files:"
-          echo "$MODIFIED_FILES"
-
-          # Extract second-level folder names (e.g., car-detection-nht, person-detection-nht)
-          CHANGED_FUNCTIONS=$(echo "$MODIFIED_FILES" | awk -F'/' 'NF==3 {print $2}' | sort | uniq)
-          echo "Identified changed functions:"
-          echo "$CHANGED_FUNCTIONS"
-
-          # Export to the environment for use in subsequent steps
-          echo "CHANGED_FUNCTIONS=$(echo $CHANGED_FUNCTIONS | tr '\n' ' ')" >> $GITHUB_ENV
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep -E '^lambdas/.*/.*$' || true)
+          echo "CHANGED_FILES=$(echo $CHANGED_FILES | tr '\n' ' ')" >> $GITHUB_ENV
+          echo "Changed files: $CHANGED_FILES"
 
       - name: Deploy Lambda functions
-        if: env.CHANGED_FUNCTIONS
+        if: env.CHANGED_FILES
         run: |
-          echo "Starting deployment process..."
-          echo "Functions to deploy: $CHANGED_FUNCTIONS"
-
-          for function_name in $CHANGED_FUNCTIONS; do
-            echo "Processing function: $function_name"
-            # Navigate to the function folder
-            cd lambdas/$function_name
-            echo "Zipping contents of folder: lambdas/$function_name"
-            ls -R
+          for file in $CHANGED_FILES; do
+            # Get the folder name above the lambda_function.py file
+            FUNCTION_NAME=$(echo $file | awk -F'/' '{print $(NF-2)}')
+            cd lambdas/$FUNCTION_NAME
             zip -r code.zip .
-            echo "Updating function: arn:aws:lambda:ap-south-1:278699821793:function:$function_name"
             aws lambda update-function-code \
-              --function-name arn:aws:lambda:ap-south-1:278699821793:function:$function_name \
+              --function-name arn:aws:lambda:ap-south-1:278699821793:function:$FUNCTION_NAME \
               --zip-file fileb://code.zip
-            echo "Deployment for $function_name completed."
-            # Return to the previous directory
-            cd - >/dev/null
+            cd -
           done
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
