@@ -3,23 +3,41 @@ name: Deploy Lambda Function
 on:
   push:
     paths:
-      - 'lambdas/**' # Trigger workflow for changes in any file within 'lambdas' directory
+      - 'lambdas/**'  # Trigger workflow for changes in any file within 'lambdas' directory
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2  # Fetch the last two commits to compare changes
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest moto boto3
+
+      - name: Run tests
+        run: pytest tests/
+
   deploy:
+    needs: test  # Ensures deployment runs only if tests pass
     runs-on: ubuntu-latest
 
     steps:
-      # Step to check out the repository
       - uses: actions/checkout@v2
         with:
-          fetch-depth: 2 # Fetch the last two commits to compare changes
+          fetch-depth: 2
 
-      # Install zip tool
       - name: Install zip tool
         uses: montudor/action-zip@v1
 
-      # Identify modified Lambda functions
       - name: Identify modified Lambda functions
         id: detect
         run: |
@@ -27,12 +45,10 @@ jobs:
           echo "CHANGED_FILES=$(echo $CHANGED_FILES | tr '\n' ' ')" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
-      # Deploy Lambda functions
       - name: Deploy Lambda functions
         if: env.CHANGED_FILES
         run: |
           for file in $CHANGED_FILES; do
-            # Derive the folder above lambda_function.py as the FUNCTION_NAME
             if [[ $file == *"lambda_function.py" ]]; then
               FUNCTION_NAME=$(basename $(dirname $file))
               cd $(dirname $file)
