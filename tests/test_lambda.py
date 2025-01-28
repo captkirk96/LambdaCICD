@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../l
 print(f"Updated PYTHONPATH: {sys.path}")
 
 # Import the lambda function handler
-from stateful.person_detection_nht.lambda_function import lambda_handler
+from lambdas.stateful.person_detection_nht.lambda_function import lambda_handler
 
 @pytest.fixture
 def aws_credentials():
