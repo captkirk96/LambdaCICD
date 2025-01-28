@@ -2,7 +2,9 @@ import json
 import pytest
 import boto3
 from moto import mock_aws
-from lambda_function import lambda_handler  # Update with your actual Lambda filename
+from lambdas.stateful.person_detection_nht.lambda_function import lambda_handler
+  # Corrected import path
+r  # Update with your actual Lambda filename
 
 @pytest.fixture
 def aws_credentials():
