@@ -20,10 +20,14 @@ jobs:
 
       - name: Install dependencies
         run: |
+         
           pip install pytest moto boto3
+          echo "PYTHONPATH=$PYTHONPATH:$(pwd)/lambdas" >> $GITHUB_ENV
 
       - name: Run tests
         run: pytest tests/
+        env:
+          PYTHONPATH: ${{ env.PYTHONPATH }}
 
   deploy:
     needs: test  # Ensures deployment runs only if tests pass
