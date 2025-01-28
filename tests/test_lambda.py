@@ -1,17 +1,15 @@
 import json
 import pytest
 import boto3
-from moto import mock_s3, mock_lambda, mock_sqs
-from my_lambda_file import lambda_handler  # Import your Lambda function file
+from moto import mock_aws
+from my_lambda_file import lambda_handler  # Update with your actual Lambda filename
 
 @pytest.fixture
 def aws_credentials():
     """Mocked AWS credentials for testing"""
     boto3.setup_default_session()
 
-@mock_s3
-@mock_lambda
-@mock_sqs
+@mock_aws
 def test_lambda_handler():
     """Test the lambda_handler function"""
     event = {
