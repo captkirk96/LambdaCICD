@@ -17,7 +17,7 @@ def test_lambda_handler():
             {
                 "body": json.dumps({
                     "Records": [{
-                        "s3": {"bucket": {"name": "test-bucket"}, "object": {"key": "test-image.jpg"}}
+                        "s3": {"bucket": {"name": "input-frames"}, "object": {"key": "test.jpg"}}
                     }]
                 }),
                 "receiptHandle": "test-receipt-handle"
