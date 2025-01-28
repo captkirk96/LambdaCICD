@@ -2,7 +2,7 @@ import json
 import pytest
 import boto3
 from moto import mock_aws
-from my_lambda_file import lambda_handler  # Update with your actual Lambda filename
+from lambda_function import lambda_handler  # Update with your actual Lambda filename
 
 @pytest.fixture
 def aws_credentials():
