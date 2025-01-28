@@ -1,10 +1,14 @@
+import sys
+import os
+
+# Add the root directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
 import json
 import pytest
 import boto3
 from moto import mock_aws
-from lambdas.stateful.person_detection_nht.lambda_function import lambda_handler
-  # Corrected import path
-r  # Update with your actual Lambda filename
+from lambdas.stateful.person_detection_nht.lambda_function import lambda_handler  # Correct import path
 
 @pytest.fixture
 def aws_credentials():
@@ -19,7 +23,10 @@ def test_lambda_handler():
             {
                 "body": json.dumps({
                     "Records": [{
-                        "s3": {"bucket": {"name": "input-frames"}, "object": {"key": "test.jpg"}}
+                        "s3": {
+                            "bucket": {"name": "input-frames"},
+                            "object": {"key": "test.jpg"}
+                        }
                     }]
                 }),
                 "receiptHandle": "test-receipt-handle"
