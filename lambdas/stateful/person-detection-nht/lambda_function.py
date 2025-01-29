@@ -54,7 +54,7 @@ def clean_up_temp_file(file):
 
 def update_detection_status_json(final_bucket, image_key, detection_status_output, detector_name ):
     """
-    Updates or creates a combined JSON file with the given human and vehicle statuses for a frame.
+    Updates or creates a combined JSON file with the givenhuman and vehicle statuses for a frame.
     """
     # Extract directory name and form the JSON file name
     directory_path = os.path.dirname(image_key)
