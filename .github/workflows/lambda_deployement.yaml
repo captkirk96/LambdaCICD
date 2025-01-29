@@ -24,7 +24,11 @@ jobs:
           
 
       - name: Run tests
-        run: pytest tests/
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          echo "PYTHONPATH=$PYTHONPATH"
+          pytest tests/
+
         
 
 
