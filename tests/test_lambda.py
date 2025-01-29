@@ -3,7 +3,7 @@ import os
 import json
 import pytest
 import boto3
-from moto import mock_s3, mock_sqs
+from moto import mock_aws
 import importlib.util
 
 # Mock environment variables for the test
@@ -24,14 +24,17 @@ spec.loader.exec_module(lambda_module)
 # Now, you can use lambda_handler from the dynamically imported module
 lambda_handler = lambda_module.lambda_handler
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def aws_credentials():
-    """Mocked AWS credentials for testing"""
-    boto3.setup_default_session()
+    """Mocked AWS Credentials for moto."""
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+    os.environ["AWS_DEFAULT_REGION"] = "ap-south-1"
 
-@mock_s3
-@mock_sqs
-def test_lambda_handler():
+@mock_aws
+def test_lambda_handler(aws_credentials):
     """Test the lambda_handler function"""
     
     # Mock SQS queue
