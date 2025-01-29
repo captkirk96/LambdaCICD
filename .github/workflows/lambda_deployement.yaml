@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest moto boto3
+          pip install pytest moto boto3 opencv-python-headless requests
       
       - name: Debug Python Path and Files
         run: |
