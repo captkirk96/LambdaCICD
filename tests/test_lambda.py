@@ -3,15 +3,22 @@ import os
 import json
 import pytest
 import boto3
+import importlib.util
 from moto import mock_aws
 
 # Debugging: Print the current working directory
 print(f"Current working directory: {os.getcwd()}")
 
+# Manually load the module using importlib (for hyphenated directories)
+lambda_module_path = os.path.join(os.path.dirname(__file__), "../lambdas/stateful/person-detection-nht/lambda_function.py")
 
+spec = importlib.util.spec_from_file_location("lambda_function", lambda_module_path)
+lambda_module = importlib.util.module_from_spec(spec)
+sys.modules["lambda_function"] = lambda_module
+spec.loader.exec_module(lambda_module)
 
-# Import the lambda function handler
-from lambdas.stateful.person-detection-nht.lambda_function import lambda_handler
+# Now, you can use lambda_handler from the dynamically imported module
+lambda_handler = lambda_module.lambda_handler
 
 @pytest.fixture
 def aws_credentials():
