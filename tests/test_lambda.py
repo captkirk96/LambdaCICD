@@ -33,6 +33,7 @@ def test_lambda_handler():
             {
                 "body": json.dumps({
                     "Records": [{
+
                         "s3": {
                             "bucket": {"name": "input-frames"},
                             "object": {"key": "test.jpg"}
@@ -52,7 +53,9 @@ def test_lambda_handler():
     # Call the Lambda handler
     response = lambda_handler(event, context)
 
-    # Debugging: Print the response from the handler
-    print(f"Lambda response: {response}")
+    # ✅ Debugging: Print the full response JSON (Add this line)
+    print("Lambda function output:")
+    print(json.dumps(response, indent=2))  
 
+    # Validate response
     assert response["statusCode"] == 200
