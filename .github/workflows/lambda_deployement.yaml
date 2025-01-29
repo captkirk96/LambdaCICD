@@ -32,7 +32,7 @@ jobs:
         run: |
           export PYTHONPATH=$(pwd)
           echo "PYTHONPATH set to $PYTHONPATH"
-          pytest tests/
+          pytest tests/ --capture=no
         env:
           PYTHONPATH: ${{ env.PYTHONPATH }}
           AWS_DEFAULT_REGION: "ap-south-1"  # ✅ Add this here
