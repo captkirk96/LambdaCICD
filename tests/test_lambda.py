@@ -4,7 +4,11 @@ import json
 import pytest
 import boto3
 import importlib.util
-from moto import mock_aws  # Use mock_aws instead of individual service mocks
+from moto import mock_aws
+
+# Mock environment variables for the test
+os.environ['OUTPUT_BUCKET_NAME'] = 'your-output-bucket-name'
+os.environ['SQS_QUEUE_URL'] = 'https://sqs.ap-south-1.amazonaws.com/278699821793/human'
 
 # Debugging: Print the current working directory
 print(f"Current working directory: {os.getcwd()}")
@@ -28,14 +32,42 @@ def aws_credentials():
 @mock_aws
 def test_lambda_handler():
     """Test the lambda_handler function"""
+    
+    # Mock event structure based on the provided sample
     event = {
         "Records": [
             {
+                "messageId": "518ae65b-13c4-4f28-900b-158ba0539706",
+                "receiptHandle": "AQEBj33yMsJwu8VOjE0QEyCOi69cbIpe3GRQOsy4uk7eKyM0V2QBODGoVixOhMdyPFjTtrHkKz+cfV1BWQHZ31pLg3qOFFxrXAFcdF8ASpiEfM+2pH848t6LrvyeyzeLDAXy3dYtTij/6SBVpkpdwwjeJNMCDCH4gbfhdmZahk9Rq35dxtgUyp34M0fOKb7c9g/6EjFK7Y11GxIv/dTLsDAmfbDlwDyAOZ1FsC27aHLxc7Fbkss8GF9+0keVtwD4nUxcCGcozGvTxuIB5P45iNzkTPVVcoalpDLHcWtSyNL+O8gLBiE5gi8cHeIVSgZAlDvcTGnTeIvBtyCb3fi5PxScKSLoBGdTo5IxGjM74ldkVXyya1Nw9STPzdZJCUL8NMuo",
                 "body": json.dumps({
                     "Records": [{
+                        "eventVersion": "2.1",
+                        "eventSource": "aws:s3",
+                        "awsRegion": "ap-south-1",
+                        "eventTime": "2025-01-27T10:39:50.206Z",
+                        "eventName": "ObjectCreated:Put",
+                        "userIdentity": {
+                            "principalId": "AWS:AROAUBY6NZLQXQJFTD6HC:extract-frame-nht"
+                        },
+                        "requestParameters": {"sourceIPAddress": "65.1.3.147"},
+                        "responseElements": {
+                            "x-amz-request-id": "ZXR5FN9N1PQXKX3G",
+                            "x-amz-id-2": "ubogeIZalmTLgjHLGCPhfuYj6F4ZvoaNnN/SudnPJsA4IFk8WOw1IemEVwQtlWt6FVmhspm5iGZ204zlEm2Ic3KETkh7zGTj"
+                        },
                         "s3": {
-                            "bucket": {"name": "input-frames"},
-                            "object": {"key": "test.jpg"}
+                            "s3SchemaVersion": "1.0",
+                            "configurationId": "61a33a05-d8bb-4dc0-9c90-c909a90f66e7",
+                            "bucket": {
+                                "name": "frames-nht",
+                                "ownerIdentity": {"principalId": "A1SOGSLXVL48HE"},
+                                "arn": "arn:aws:s3:::frames-nht"
+                            },
+                            "object": {
+                                "key": "abm_video//278699821793_abm_video_1737974384719_e936a59a-7989-4240-9faa-0203483a1d7f%5B2025-01-27T10%3A39%3A50.103364%5D.jpg",
+                                "size": 18295,
+                                "eTag": "9dd068214619420c8523e7a12b7e5fdd",
+                                "sequencer": "006797627628DF18BF"
+                            }
                         }
                     }]
                 }),
@@ -43,6 +75,7 @@ def test_lambda_handler():
             }
         ]
     }
+    
     context = {}
 
     # Debugging: Print the event and context being passed to the handler
