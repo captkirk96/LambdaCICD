@@ -8,12 +8,7 @@ from moto import mock_aws
 # Debugging: Print the current working directory
 print(f"Current working directory: {os.getcwd()}")
 
-# Debugging: Print the Python path to ensure the lambdas directory is included
-print(f"PYTHONPATH: {sys.path}")
 
-# Add the root directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../lambdas')))
-print(f"Updated PYTHONPATH: {sys.path}")
 
 # Import the lambda function handler
 from lambdas.stateful.person_detection_nht.lambda_function import lambda_handler
