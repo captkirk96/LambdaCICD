@@ -6,12 +6,13 @@ import boto3
 import importlib.util
 from moto import mock_aws
 
-# Debugging: Print the current working directory
-print(f"Current working directory: {os.getcwd()}")
+# Setting environment variables required for the Lambda function
+os.environ['OUTPUT_BUCKET_NAME'] = 'mock-output-bucket'
+os.environ['INVOKE_FUNCTION_ARN'] = 'arn:aws:lambda:ap-south-1:123456789012:function:next-lambda-function'
+os.environ['SQS_QUEUE_URL'] = 'https://sqs.mock.amazonaws.com/123456789012/test-queue'
 
-# Manually load the module using importlib (for hyphenated directories)
+# Manually load the Lambda function
 lambda_module_path = os.path.join(os.path.dirname(__file__), "../lambdas/stateful/person-detection-nht/lambda_function.py")
-
 spec = importlib.util.spec_from_file_location("lambda_function", lambda_module_path)
 lambda_module = importlib.util.module_from_spec(spec)
 sys.modules["lambda_function"] = lambda_module
@@ -33,29 +34,23 @@ def test_lambda_handler():
             {
                 "body": json.dumps({
                     "Records": [{
-
                         "s3": {
                             "bucket": {"name": "input-frames"},
                             "object": {"key": "test.jpg"}
                         }
-                    }]
-                }),
+                    }]}
+                ),
                 "receiptHandle": "test-receipt-handle"
             }
         ]
     }
     context = {}
 
-    # Debugging: Print the event and context being passed to the handler
-    print(f"Event: {json.dumps(event, indent=2)}")
-    print(f"Context: {context}")
-
     # Call the Lambda handler
     response = lambda_handler(event, context)
 
-    # ✅ Debugging: Print the full response JSON (Add this line)
-    print("Lambda function output:")
-    print(json.dumps(response, indent=2))  
+    # Print the Lambda response
+    print(f"Lambda function output:\n{json.dumps(response, indent=2)}")
 
-    # Validate response
+    # Validate the response
     assert response["statusCode"] == 200
