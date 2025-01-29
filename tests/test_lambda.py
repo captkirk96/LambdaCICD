@@ -3,22 +3,14 @@ import sys
 import json
 import pytest
 import boto3
-from moto import mock_aws
 import importlib.util
 
-# Mock environment variables for the test
+# Use actual AWS credentials for S3 access in GitHub Actions
 os.environ['OUTPUT_BUCKET_NAME'] = 'your-output-bucket-name'
 os.environ['SQS_QUEUE_URL'] = 'https://sqs.ap-south-1.amazonaws.com/278699821793/human'
-os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-os.environ["AWS_SECURITY_TOKEN"] = "testing"
-os.environ["AWS_SESSION_TOKEN"] = "testing"
-os.environ["AWS_DEFAULT_REGION"] = "ap-south-1"
+os.environ["AWS_REGION"] = "ap-south-1"
 
-# Debugging: Print the current working directory
-print(f"Current working directory: {os.getcwd()}")
-
-# Manually load the module using importlib (for hyphenated directories)
+# Manually load the module using importlib
 lambda_module_path = os.path.join(os.path.dirname(__file__), "../lambdas/stateful/person-detection-nht/lambda_function.py")
 
 spec = importlib.util.spec_from_file_location("lambda_function", lambda_module_path)
@@ -30,42 +22,32 @@ spec.loader.exec_module(lambda_module)
 lambda_handler = lambda_module.lambda_handler
 
 @pytest.fixture(scope="function")
-def aws_credentials():
-    """Mocked AWS credentials for testing."""
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "ap-south-1"
+def s3_client():
+    """Create an S3 client for actual bucket access."""
+    return boto3.client('s3', region_name='ap-south-1')
 
-@mock_aws
-def test_lambda_handler(aws_credentials):
-    """Test the lambda_handler function."""
-    
-    # Mock SQS queue
-    sqs = boto3.client('sqs', region_name='ap-south-1')
-    queue_url = sqs.create_queue(QueueName='human')['QueueUrl']
-    
-    # Mock S3 bucket with correct LocationConstraint
-    s3 = boto3.client('s3', region_name='ap-south-1')
-    s3.create_bucket(
-        Bucket='frames-nht',
-        CreateBucketConfiguration={'LocationConstraint': 'ap-south-1'}
-    )
-    s3.create_bucket(
-        Bucket='your-output-bucket-name',
-        CreateBucketConfiguration={'LocationConstraint': 'ap-south-1'}
-    )
-    
-    # Upload a mock image to S3
-    s3.put_object(
-        Bucket='frames-nht',
-        Key='abm_video//278699821793_abm_video_1737974384719_e936a59a-7989-4240-9faa-0203483a1d7f[2025-01-27T10:39:50.103364].jpg',
-        Body=b'fake-image-data'
+def test_lambda_handler(s3_client):
+    """Test the lambda_handler function using an actual S3 image."""
+
+    bucket_name = "frames-nht"
+    image_key = "test-images/sample.jpg"  # Make sure this file exists in the S3 bucket
+
+    # Download actual image from S3
+    local_image_path = "/tmp/sample.jpg"
+    s3_client.download_file(bucket_name, image_key, local_image_path)
+
+    with open(local_image_path, "rb") as img_file:
+        image_data = img_file.read()
+
+    # Upload the actual image to the input S3 bucket
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Key=image_key,
+        Body=image_data
     )
 
-    # Mock event structure based on the provided sample
-    event = {
+    # Mock event structure with the actual image key
+   event = {
         "Records": [
             {
                 "messageId": "518ae65b-13c4-4f28-900b-158ba0539706",
@@ -106,12 +88,8 @@ def test_lambda_handler(aws_credentials):
             }
         ]
     }
-    
-    context = {}
 
-    # Debugging: Print the event and context being passed to the handler
-    print(f"Event: {json.dumps(event, indent=2)}")
-    print(f"Context: {context}")
+    context = {}
 
     # Call the Lambda handler
     response = lambda_handler(event, context)
