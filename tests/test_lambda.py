@@ -11,7 +11,7 @@ print(f"Current working directory: {os.getcwd()}")
 
 
 # Import the lambda function handler
-from lambdas.stateful.person_detection_nht.lambda_function import lambda_handler
+from lambdas.stateful.person-detection-nht.lambda_function import lambda_handler
 
 @pytest.fixture
 def aws_credentials():
