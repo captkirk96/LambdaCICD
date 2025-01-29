@@ -47,13 +47,14 @@ def test_lambda_handler(s3_client):
     )
 
     # Mock event structure with the actual image key
-   event = {
-        "Records": [
-            {
-                "messageId": "518ae65b-13c4-4f28-900b-158ba0539706",
-                "receiptHandle": "test-receipt-handle",
-                "body": json.dumps({
-                    "Records": [{
+  event = {
+    "Records": [
+        {
+            "messageId": "518ae65b-13c4-4f28-900b-158ba0539706",
+            "receiptHandle": "test-receipt-handle",
+            "body": json.dumps({
+                "Records": [
+                    {
                         "eventVersion": "2.1",
                         "eventSource": "aws:s3",
                         "awsRegion": "ap-south-1",
@@ -62,7 +63,9 @@ def test_lambda_handler(s3_client):
                         "userIdentity": {
                             "principalId": "AWS:AROAUBY6NZLQXQJFTD6HC:extract-frame-nht"
                         },
-                        "requestParameters": {"sourceIPAddress": "65.1.3.147"},
+                        "requestParameters": {
+                            "sourceIPAddress": "65.1.3.147"
+                        },
                         "responseElements": {
                             "x-amz-request-id": "ZXR5FN9N1PQXKX3G",
                             "x-amz-id-2": "ubogeIZalmTLgjHLGCPhfuYj6F4ZvoaNnN/SudnPJsA4IFk8WOw1IemEVwQtlWt6FVmhspm5iGZ204zlEm2Ic3KETkh7zGTj"
@@ -72,7 +75,9 @@ def test_lambda_handler(s3_client):
                             "configurationId": "61a33a05-d8bb-4dc0-9c90-c909a90f66e7",
                             "bucket": {
                                 "name": "frames-nht",
-                                "ownerIdentity": {"principalId": "A1SOGSLXVL48HE"},
+                                "ownerIdentity": {
+                                    "principalId": "A1SOGSLXVL48HE"
+                                },
                                 "arn": "arn:aws:s3:::frames-nht"
                             },
                             "object": {
@@ -82,12 +87,13 @@ def test_lambda_handler(s3_client):
                                 "sequencer": "006797627628DF18BF"
                             }
                         }
-                    }]
-                }),
-                "receiptHandle": "test-receipt-handle"
-            }
-        ]
-    }
+                    }
+                ]
+            }),
+            "receiptHandle": "test-receipt-handle"
+        }
+    ]
+}
 
     context = {}
 
