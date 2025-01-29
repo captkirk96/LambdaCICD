@@ -3,8 +3,8 @@ import os
 import json
 import pytest
 import boto3
+from moto import mock_s3, mock_sqs
 import importlib.util
-from moto import mock_aws
 
 # Mock environment variables for the test
 os.environ['OUTPUT_BUCKET_NAME'] = 'your-output-bucket-name'
@@ -29,16 +29,33 @@ def aws_credentials():
     """Mocked AWS credentials for testing"""
     boto3.setup_default_session()
 
-@mock_aws
+@mock_s3
+@mock_sqs
 def test_lambda_handler():
     """Test the lambda_handler function"""
     
+    # Mock SQS queue
+    sqs = boto3.client('sqs', region_name='ap-south-1')
+    queue_url = sqs.create_queue(QueueName='human')['QueueUrl']
+    
+    # Mock S3 bucket
+    s3 = boto3.client('s3', region_name='ap-south-1')
+    s3.create_bucket(Bucket='frames-nht')
+    s3.create_bucket(Bucket='your-output-bucket-name')  # Create the output bucket as well
+    
+    # Upload a mock image to S3
+    s3.put_object(
+        Bucket='frames-nht',
+        Key='abm_video//278699821793_abm_video_1737974384719_e936a59a-7989-4240-9faa-0203483a1d7f[2025-01-27T10:39:50.103364].jpg',
+        Body=b'fake-image-data'
+    )
+
     # Mock event structure based on the provided sample
     event = {
         "Records": [
             {
                 "messageId": "518ae65b-13c4-4f28-900b-158ba0539706",
-                "receiptHandle": "AQEBj33yMsJwu8VOjE0QEyCOi69cbIpe3GRQOsy4uk7eKyM0V2QBODGoVixOhMdyPFjTtrHkKz+cfV1BWQHZ31pLg3qOFFxrXAFcdF8ASpiEfM+2pH848t6LrvyeyzeLDAXy3dYtTij/6SBVpkpdwwjeJNMCDCH4gbfhdmZahk9Rq35dxtgUyp34M0fOKb7c9g/6EjFK7Y11GxIv/dTLsDAmfbDlwDyAOZ1FsC27aHLxc7Fbkss8GF9+0keVtwD4nUxcCGcozGvTxuIB5P45iNzkTPVVcoalpDLHcWtSyNL+O8gLBiE5gi8cHeIVSgZAlDvcTGnTeIvBtyCb3fi5PxScKSLoBGdTo5IxGjM74ldkVXyya1Nw9STPzdZJCUL8NMuo",
+                "receiptHandle": "test-receipt-handle",
                 "body": json.dumps({
                     "Records": [{
                         "eventVersion": "2.1",
