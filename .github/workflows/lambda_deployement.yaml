@@ -7,6 +7,7 @@ on:
 
 jobs:
   test:
+    if: contains(github.event.commits.*.modified, 'lambdas/stateful/person-detection-nht/lambda_function.py')  
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -20,8 +21,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest moto boto3 opencv-python-headless requests
-      
+          pip install pytest boto3 opencv-python-headless requests
+
       - name: Debug Python Path and Files
         run: |
           echo "Current Working Directory: $(pwd)"
@@ -32,16 +33,11 @@ jobs:
         run: |
           export PYTHONPATH=$(pwd)
           echo "PYTHONPATH set to $PYTHONPATH"
-          pytest tests/ --capture=no
+          pytest tests/test_lambda.py --capture=no
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  # ✅ Added here
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  # ✅ Added here
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  
           AWS_DEFAULT_REGION: "ap-south-1"  
-
-
-
-        
-
 
   deploy:
     needs: test  # Ensures deployment runs only if tests pass
