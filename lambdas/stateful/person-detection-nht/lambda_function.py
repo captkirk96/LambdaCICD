@@ -113,7 +113,7 @@ def process_s3_event(s3_event):
             raise Exception(f"Failed to fetch image from S3: {response.status_code}")
 
         # Send the image data to the Modal web endpoint
-        modal_url = "https://aparna-j--person-detector-tracker-detect-and-track.modal.run"
+        modal_url = "https://chris-m--vehicle-detector-tracker-detect-and-track.modal.run"
         headers = {'Content-Type': 'application/octet-stream'}
         modal_response = requests.post(modal_url, data=response.content, headers=headers)
 
