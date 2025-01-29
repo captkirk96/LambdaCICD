@@ -24,7 +24,7 @@ def invoke_lambda(function_arn, payload):
         print(f"Error invoking Lambda: {e}")
 
 def download_file_from_s3(bucket_name, key):
-    """Download a file from S3 and save it locally."""
+    """Download a file from S3 and save it locally"""
     try:
         print(f"DEBUG: Attempting to download {key} from bucket {bucket_name}")
         temp_file = tempfile.NamedTemporaryFile(delete=False)
