@@ -21,13 +21,20 @@ jobs:
       - name: Install dependencies
         run: |
           pip install pytest moto boto3
-          
+      
+      - name: Debug Python Path and Files
+        run: |
+          echo "Current Working Directory: $(pwd)"
+          echo "PYTHONPATH=$PYTHONPATH"
+          ls -R
+
 
       - name: Run tests
         run: |
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          export PYTHONPATH=$(pwd)
           echo "PYTHONPATH=$PYTHONPATH"
           pytest tests/
+
 
         
 
