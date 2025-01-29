@@ -10,7 +10,7 @@ s3_client = boto3.client('s3')
 
 def invoke_lambda(function_arn, payload):
     """
-    Invoke a Lambda function asynchronously (using 'Event' InvocationType).
+    Invoke a Lambda function asynchronously (using 'Event'InvocationType).
     """
     lambda_client = boto3.client('lambda')
     try:
