@@ -32,8 +32,11 @@ jobs:
       - name: Run tests
         run: |
           export PYTHONPATH=$(pwd)
-          echo "PYTHONPATH=$PYTHONPATH"
+          echo "PYTHONPATH set to $PYTHONPATH"
           pytest tests/
+        env:
+          PYTHONPATH: ${{ env.PYTHONPATH }}
+
 
 
         
