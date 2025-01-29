@@ -3,7 +3,7 @@ import os
 import json
 import pytest
 import boto3
-from moto import mock_s3, mock_sqs
+from moto import mock_aws
 import importlib.util
 
 # Mock environment variables for the test
@@ -29,8 +29,8 @@ def aws_credentials():
     """Mocked AWS credentials for testing"""
     boto3.setup_default_session()
 
-@mock_s3
-@mock_sqs
+
+@mock_aws
 def test_lambda_handler():
     """Test the lambda_handler function"""
     
