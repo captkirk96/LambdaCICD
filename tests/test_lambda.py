@@ -1,34 +1,32 @@
-import sys
-import os
 import json
 import pytest
+import os
 import boto3
-import importlib.util
-from moto import mock_aws
+from moto import mock_s3, mock_sqs, mock_lambda
+from unittest.mock import patch
 
-# Setting environment variables required for the Lambda function
+# Setting up mock AWS credentials
+os.environ['AWS_ACCESS_KEY_ID'] = 'mock_access_key'
+os.environ['AWS_SECRET_ACCESS_KEY'] = 'mock_secret_key'
+
 os.environ['OUTPUT_BUCKET_NAME'] = 'mock-output-bucket'
 os.environ['INVOKE_FUNCTION_ARN'] = 'arn:aws:lambda:ap-south-1:123456789012:function:next-lambda-function'
-os.environ['SQS_QUEUE_URL'] = 'https://sqs.mock.amazonaws.com/123456789012/test-queue'
 
-# Manually load the Lambda function
-lambda_module_path = os.path.join(os.path.dirname(__file__), "../lambdas/stateful/person-detection-nht/lambda_function.py")
-spec = importlib.util.spec_from_file_location("lambda_function", lambda_module_path)
-lambda_module = importlib.util.module_from_spec(spec)
-sys.modules["lambda_function"] = lambda_module
-spec.loader.exec_module(lambda_module)
-
-# Now, you can use lambda_handler from the dynamically imported module
-lambda_handler = lambda_module.lambda_handler
-
-@pytest.fixture
-def aws_credentials():
-    """Mocked AWS credentials for testing"""
-    boto3.setup_default_session()
-
-@mock_aws
+@mock_sqs
+@mock_s3
+@mock_lambda
 def test_lambda_handler():
-    """Test the lambda_handler function"""
+    # Mock SQS queue creation
+    sqs = boto3.client('sqs', region_name='ap-south-1')
+    queue_url = sqs.create_queue(QueueName='test-queue')['QueueUrl']
+    os.environ['SQS_QUEUE_URL'] = queue_url  # Set environment variable for the queue URL
+
+    # Mock S3 bucket creation and file upload
+    s3 = boto3.client('s3', region_name='us-west-2')
+    s3.create_bucket(Bucket='input-frames')
+    s3.put_object(Bucket='input-frames', Key='test.jpg', Body=b'fake-image-data')
+
+    # Setup event and context
     event = {
         "Records": [
             {
@@ -46,11 +44,23 @@ def test_lambda_handler():
     }
     context = {}
 
-    # Call the Lambda handler
-    response = lambda_handler(event, context)
+    # Patch the Modal API request
+    with patch('requests.post') as mock_modal_post:
+        # Mock the Modal response
+        mock_modal_post.return_value.status_code = 200
+        mock_modal_post.return_value.json.return_value = {"human_detected": True}
 
-    # Print the Lambda response
-    print(f"Lambda function output:\n{json.dumps(response, indent=2)}")
+        # Call the Lambda handler
+        response = lambda_handler(event, context)
 
-    # Validate the response
-    assert response["statusCode"] == 200
+        # Print the Lambda response
+        print(f"Lambda function output:\n{json.dumps(response, indent=2)}")
+
+        # Validate the response
+        assert response["statusCode"] == 200
+        mock_modal_post.assert_called_once()
+
+        # Ensure the Lambda invocation happens (if any)
+        lambda_client = boto3.client('lambda')
+        lambda_client.invoke.assert_called_once()
+
