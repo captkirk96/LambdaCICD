@@ -14,7 +14,7 @@ s3_client = boto3.client('s3')
 face_detector = cv2.CascadeClassifier("face.xml")
 
 if face_detector.empty():
-    print("DEBUG: Fail to load Haar Cascade file. Check th 'face.xml' paTh")
+    print("DEBUG: Failed to load Haar Cascade file. Check the 'face.xml' path.")
 
 def invoke_lambda(function_arn, payload):
     """
@@ -122,7 +122,7 @@ def process_s3_event(s3_event):
             raise Exception(f"Failed to fetch image from S3: {response.status_code}")
 
         # Send the image data to the Modal web endpoint
-        modal_url = "https://aparna-j--person-detector-tracker-detect-and-track.modal.run"
+        modal_url = "https://phronetic-ai--person-detector-tracker-detect-and-track.modal.run"
         headers = {'Content-Type': 'application/octet-stream'}
         modal_response = requests.post(modal_url, data=response.content, headers=headers)
 
@@ -167,6 +167,8 @@ def lambda_handler(event, context):
     try:
         print(f"DEBUG: Event received: {json.dumps(event)}")
 
+        sqs = boto3.client('sqs')
+        
         # Loop through SQS messages
         for record in event.get('Records', []):
             try:
