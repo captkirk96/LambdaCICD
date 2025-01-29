@@ -28,7 +28,6 @@ jobs:
           echo "PYTHONPATH=$PYTHONPATH"
           ls -R
 
-
       - name: Run tests
         run: |
           export PYTHONPATH=$(pwd)
@@ -36,6 +35,7 @@ jobs:
           pytest tests/
         env:
           PYTHONPATH: ${{ env.PYTHONPATH }}
+          AWS_DEFAULT_REGION: "ap-south-1"  # ✅ Add this here
 
 
 
