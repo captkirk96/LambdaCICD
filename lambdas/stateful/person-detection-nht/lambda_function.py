@@ -14,7 +14,7 @@ s3_client = boto3.client('s3')
 face_detector = cv2.CascadeClassifier("face.xml")
 
 if face_detector.empty():
-    print("DEBUG: Failed to load Haar Cascade file. Chek the 'face.xml' pth.")
+    print("DEBUG: Failed to load Haar Cascade file. Chek the 'face.xml' pAth.")
 
 def invoke_lambda(function_arn, payload):
     """
