@@ -1,4 +1,3 @@
-import cv2
 import boto3
 import json
 import os
@@ -6,15 +5,8 @@ import requests
 import urllib.parse
 import tempfile
 
-
 # Initialize S3 client
 s3_client = boto3.client('s3')
-
-# Load the Haar Cascade face detector
-face_detector = cv2.CascadeClassifier("face.xml")
-
-if face_detector.empty():
-    print("DEBUG: Failed to load Haar Cascade file. Chek the 'face.xml' pAth.")
 
 def invoke_lambda(function_arn, payload):
     """
@@ -63,7 +55,6 @@ def clean_up_temp_file(file):
 def update_detection_status_json(final_bucket, image_key, detection_status_output, detector_name ):
     """
     Updates or creates a combined JSON file with the given human and vehicle statuses for a frame.
-
     """
     # Extract directory name and form the JSON file name
     directory_path = os.path.dirname(image_key)
@@ -91,7 +82,7 @@ def update_detection_status_json(final_bucket, image_key, detection_status_outpu
 
     print(f"Updated {detector_name}.json with {frame_id}: {detection_status_output}")
 
-    return directory_name,updated_json_file
+    return directory_name, updated_json_file
     
 def process_s3_event(s3_event):
     """
