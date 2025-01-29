@@ -7,40 +7,46 @@ on:
 
 jobs:
   test:
-    if: contains(github.event.commits.*.modified, 'lambdas/stateful/person-detection-nht/lambda_function.py')  
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 2  # Fetch the last two commits to compare changes
 
+      - name: Check if person-detection-nht was modified
+        id: check_changes
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          echo "Changed files: $CHANGED_FILES"
+          if echo "$CHANGED_FILES" | grep -q 'lambdas/stateful/person-detection-nht/lambda_function.py'; then
+            echo "RUN_TESTS=true" >> $GITHUB_ENV
+          else
+            echo "RUN_TESTS=false" >> $GITHUB_ENV
+          fi
+
       - name: Set up Python
+        if: env.RUN_TESTS == 'true'
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
       - name: Install dependencies
+        if: env.RUN_TESTS == 'true'
         run: |
           pip install pytest boto3 opencv-python-headless requests
 
-      - name: Debug Python Path and Files
-        run: |
-          echo "Current Working Directory: $(pwd)"
-          echo "PYTHONPATH=$PYTHONPATH"
-          ls -R
-
-      - name: Run tests
+      - name: Run tests for person-detection-nht
+        if: env.RUN_TESTS == 'true'
         run: |
           export PYTHONPATH=$(pwd)
-          echo "PYTHONPATH set to $PYTHONPATH"
           pytest tests/test_lambda.py --capture=no
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}  
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}  
-          AWS_DEFAULT_REGION: "ap-south-1"  
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "ap-south-1"
 
   deploy:
-    needs: test  # Ensures deployment runs only if tests pass
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
