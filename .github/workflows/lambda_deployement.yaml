@@ -13,33 +13,50 @@ jobs:
         with:
           fetch-depth: 2  # Fetch the last two commits to compare changes
 
-      - name: Check if person-detection-nht was modified
+      - name: Check modified files
         id: check_changes
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
           echo "Changed files: $CHANGED_FILES"
+          
           if echo "$CHANGED_FILES" | grep -q 'lambdas/stateful/person-detection-nht/lambda_function.py'; then
-            echo "RUN_TESTS=true" >> $GITHUB_ENV
+            echo "RUN_PERSON_TESTS=true" >> $GITHUB_ENV
           else
-            echo "RUN_TESTS=false" >> $GITHUB_ENV
+            echo "RUN_PERSON_TESTS=false" >> $GITHUB_ENV
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q 'lambdas/stateful/car-detection-nht/lambda_function.py'; then
+            echo "RUN_VEHICLE_TESTS=true" >> $GITHUB_ENV
+          else
+            echo "RUN_VEHICLE_TESTS=false" >> $GITHUB_ENV
           fi
 
       - name: Set up Python
-        if: env.RUN_TESTS == 'true'
+        if: env.RUN_PERSON_TESTS == 'true' || env.RUN_VEHICLE_TESTS == 'true'
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
       - name: Install dependencies
-        if: env.RUN_TESTS == 'true'
+        if: env.RUN_PERSON_TESTS == 'true' || env.RUN_VEHICLE_TESTS == 'true'
         run: |
           pip install pytest boto3 opencv-python-headless requests
 
-      - name: Run tests for person-detection-nht
-        if: env.RUN_TESTS == 'true'
+      - name: Run tests for person detection
+        if: env.RUN_PERSON_TESTS == 'true'
         run: |
           export PYTHONPATH=$(pwd)
           pytest tests/test_lambda.py --capture=no
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "ap-south-1"
+
+      - name: Run tests for vehicle detection
+        if: env.RUN_VEHICLE_TESTS == 'true'
+        run: |
+          export PYTHONPATH=$(pwd)
+          pytest tests/test_vehicle.py --capture=no
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
