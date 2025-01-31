@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         if: env.RUN_PERSON_TESTS == 'true' || env.RUN_VEHICLE_TESTS == 'true'
         run: |
-          pip install pytest boto3 opencv-python-headless requests
+          pip install pytest boto3 opencv-python-headless requests pymongo
 
       - name: Run tests for person detection
         if: env.RUN_PERSON_TESTS == 'true'
