@@ -1,10 +1,12 @@
 import json
 import cv2
 import boto3
-import tempfile
 import os
-import time
 import requests
+import pymongo
+import datetime
+import urllib.parse
+import re
 
 # Initialize S3 client
 s3_client = boto3.client('s3')
@@ -13,61 +15,6 @@ s3_client = boto3.client('s3')
 car_detector = cv2.CascadeClassifier("cars.xml")
 if car_detector.empty():
     print("DEBUG: Failed to load Haar Cascade file. Check the 'cars.xml' path.")
-
-def download_file_from_s3(bucket_name, key, retries=3, delay=2):
-    """Download a file from S3 and save it locally."""
-    for attempt in range(retries):
-        try:
-            print(f"DEBUG: Attempting to download {key} from bucket {bucket_name} (Attempt {attempt + 1})")
-            temp_file = tempfile.NamedTemporaryFile(delete=False)
-            s3_client.download_file(bucket_name, key, temp_file.name)
-            print(f"DEBUG: Successfully downloaded {key} to {temp_file.name}")
-            return temp_file
-        except Exception as e:
-            print(f"DEBUG: Error downloading {key} - {e}")
-            if attempt < retries - 1:
-                time.sleep(delay)
-    raise Exception(f"Failed to download {key} from S3 after {retries} attempts")
-
-def clean_up_temp_file(file):
-    try:
-        os.unlink(file.name)
-        print(f"DEBUG: Temporary file {file.name} deleted")
-    except Exception as e:
-        print(f"Error deleting temporary file {file.name}: {e}")
-
-def update_detection_status_json(final_bucket, image_key, detection_status_output, detector_name ):
-    """
-    Updates or creates a combined JSON file with the given human and vehicle statuses for a frame.
-
-    """
-    # Extract directory name and form the JSON file name
-    directory_path = os.path.dirname(image_key)
-    directory_name = os.path.join(directory_path, detector_name + '.json')
-
-    # Check if the combined JSON file exists in the S3 bucket
-    try:
-        detection_status_file = download_file_from_s3(final_bucket, directory_name)
-        with open(detection_status_file.name, 'r') as f:
-            detection_status_json = json.load(f)
-    except Exception:
-        detection_status_json = {}
-
-    # Update or create a new entry for the frame
-    frame_id = os.path.basename(image_key).rsplit('.', 1)[0]
-    print(f"DEBUG: Updating frame_id: {frame_id}")
-
-    # Update or create a new entry for the frame
-    detection_status_json[frame_id] = detection_status_output
-
-    # Save the updated combined JSON to a temporary file
-    updated_json_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
-    with open(updated_json_file.name, 'w') as f:
-        json.dump(detection_status_json, f)
-
-    print(f"Updated {detector_name}.json with {frame_id}: {detection_status_output}")
-
-    return directory_name,updated_json_file
 
 def detect_cars_in_image(image_path):
     """Detect cars in an image using Haar Cascade."""
@@ -89,17 +36,6 @@ def detect_cars_in_image(image_path):
     except Exception as e:
         print(f"DEBUG: Error during car detection - {e}")
         return False
-
-def upload_file_to_s3(file_path, bucket_name, key):
-    """Upload a file to S3."""
-    try:
-        print(f"DEBUG: Uploading {file_path} to bucket {bucket_name} with key {key}")
-        s3_client.upload_file(file_path, bucket_name, key)
-        print(f"DEBUG: Successfully uploaded {key} to {bucket_name}")
-    except Exception as e:
-        print(f"DEBUG: Error uploading file to S3 - {e}")
-        raise
-
 
 def fetch_image_from_s3(bucket_name, object_key,expiration=3600):
     """
@@ -150,66 +86,74 @@ def send_image_to_modal(modal_url, image_data):
         # Handle any exceptions that occur during the request
         raise Exception(f"Error during Modal API request: {e}")
 
-def update_combined_json(image_key, human_status, vehicle_status, final_bucket):
+def get_frame_stream_id(frame_name):
+    # Regular expression pattern
+    pattern = r"^(\d+)_.*?_(\d+)_"
+
+    # Extract values
+    match = re.match(pattern, frame_name)
+    if match:
+        stream_id = match.group(1)  
+        frame_id = match.group(2)   
+
+    print("Stream ID:", stream_id)
+    print("Frame ID:", frame_id)
+    return stream_id,frame_id
+
+# MongoDB connection setup
+MONGO_URI = "mongodb+srv://aparnajayanv:1TB20dYCWmv1W4CQ@lambdacluster.ovcgx.mongodb.net/"  # MongoDB Atlas connection string
+DB_NAME = "lambda_outputs"  # MongoDB database name
+COLLECTION_NAME = "combined_output"
+VEHICLE_COLLECTION_NAME = "vehicle_detection_output"
+
+# Connect to MongoDB Atlas
+mongo_client = pymongo.MongoClient(MONGO_URI)
+db = mongo_client[DB_NAME]
+combined_collection = db[COLLECTION_NAME]
+vehicle_collection = db[VEHICLE_COLLECTION_NAME]
+
+def store_output_in_mongo(collection,stream_id,detection_type,frame_id,detection_status):
+    try:
+        # Current timestamp
+        timestamp = datetime.datetime.utcnow().isoformat()
+
+        # Define the update query and update operation
+        query = {"stream_Id": stream_id}
+        update = {
+            "$set": {
+                "updated_at": timestamp,
+                f"{detection_type}.{frame_id}": detection_status
+            }
+        }
+        # Perform the upsert operation
+        collection.update_one(query, update, upsert=True)
+        return f"Successfully updated {detection_type} for {frame_id} in directory {stream_id}"
+    
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps(
+                {
+                    "error": str(e),
+                    "message": "Failed to update MongoDB",
+                }
+            ),
+        }
+    
+def process_s3_event(s3_event):
     """
-    Updates the combined JSON file in the S3 bucket with the given frame information.
+    Process the S3 event payload received via SQS and invoke the next Lambda.
     """
-    # Extract directory name from the image key to use as the output JSON filename
-    directory_path = os.path.dirname(image_key)
-    directory_name = os.path.join(directory_path, os.path.basename(directory_path) + '.json')
-
-    # Check if the combined JSON file exists in the final_bucket bucket
     try:
-        combined_json_file = download_file_from_s3(final_bucket, directory_name)
-        with open(combined_json_file.name, 'r') as f:
-            combined_json = json.load(f)
-    except Exception as e:
-        print(f"Error downloading or reading the combined JSON file: {e}")
-        combined_json = {}
 
-    # Update or create a new entry for the frame
-    frame_id = os.path.basename(image_key).rsplit('.', 1)[0]
-    print(f"DEBUG: Updating frame_id: {frame_id}")
-    if frame_id not in combined_json:
-        combined_json[frame_id] = []
-
-    # Avoid duplicate entries
-    if human_status not in combined_json[frame_id]:
-        combined_json[frame_id].append(human_status)
-
-    if vehicle_status not in combined_json[frame_id]:
-        combined_json[frame_id].append(vehicle_status)
-    # print(combined_json)
-
-    # Save the updated combined JSON to a temporary file
-    try:
-        updated_json_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
-        with open(updated_json_file.name, 'w') as f:
-            json.dump(combined_json, f)
-    except Exception as e:
-        print(f"Error saving the updated JSON file: {e}")
-        return None, None
-
-    return directory_name, updated_json_file
-
-def clean_up_temp_file(file):
-    try:
-        os.unlink(file.name)
-        print(f"DEBUG: Temporary file {file.name} deleted")
-    except Exception as e:
-        print(f"Error deleting temporary file {file.name}: {e}")
-
-def lambda_handler(event, context):
-    try:
-        final_bucket = os.environ['FINAL_OUTPUT_BUCKET']
-
-        bucket_name = event.get("bucket_name")
-        image_key = event.get("image_key")
+        bucket_name = s3_event['bucket']['name']
+        image_key = s3_event['object']['key']
+        image_key = urllib.parse.unquote(image_key)
 
         # Fetch the image data from the pre-signed URL
         response = fetch_image_from_s3(bucket_name, image_key,expiration=3600)
 
-        modal_url = "https://phronetic-ai--vehicle-detector-tracker-detect-and-track.modal.run"
+        modal_url = "https://chris-m--vehicle-detector-tracker-detect-and-track.modal.run"
         image_data = response.content
         vehicle_results = send_image_to_modal(modal_url, image_data)
         
@@ -218,16 +162,24 @@ def lambda_handler(event, context):
         else:
             vehicle_status = vehicle_results
 
-        directory_name, updated_json_file = update_detection_status_json(final_bucket, image_key, vehicle_status, "vehicle_status" )
-        # Upload the updated JSON to the "final-output1" bucket
-        upload_file_to_s3(updated_json_file.name, final_bucket, directory_name)
+        frame_name = os.path.basename(image_key).rsplit('.', 1)[0]
 
-        clean_up_temp_file(updated_json_file)
+        try:
+            stream_id,frame_id = get_frame_stream_id(frame_name)
+        except Exception as e:
+            stream_id = os.path.dirname(image_key)
+            frame_id = frame_name
+            print(e)
+
+        store_output_in_mongo(vehicle_collection,stream_id,"vehicle_status",frame_id,vehicle_status)
+        store_output_in_mongo(combined_collection,stream_id,"vehicle_status",frame_id,vehicle_status)
 
         return {
-            "bucket_name": final_bucket,
-            "updated_json": directory_name,
-            "message": "Combined JSON file updated successfully."
+            "mongodb":db,
+            "mongodb_combined_collection": combined_collection,
+            "mongodb_vehicle_collection" : vehicle_collection,
+            "directory_name": stream_id,
+            "message": "Output data successfully saved in mongodb"
         }
 
     except Exception as e:
@@ -235,4 +187,51 @@ def lambda_handler(event, context):
         return {
             "error": str(e),
             "message": "Error processing the event."
+        }
+
+def lambda_handler(event, context):
+    """
+    Lambda handler for processing SQS messages containing S3 events.
+    """
+    try:
+        print(f"DEBUG: Event received: {json.dumps(event)}")
+
+        # Initialize SQS client
+        sqs = boto3.client('sqs')
+
+        # Loop through SQS messages
+        for record in event.get('Records', []):
+            try:
+                # Parse the S3 event from the SQS message body
+                sqs_message = json.loads(record['body'])
+                s3_event = sqs_message.get('Records', [])[0]['s3']
+                receipt_handle = record['receiptHandle']  # Get the receipt handle for deleting the message
+                queue_url = os.environ.get('SQS_QUEUE_URL')  # SQS queue URL from environment variable
+
+                # Process the S3 event
+                process_s3_event(s3_event)
+
+                # After processing the message, delete it from the SQS queue
+                if queue_url:
+                    sqs.delete_message(
+                    QueueUrl=queue_url,
+                    ReceiptHandle=receipt_handle
+                )
+                else:
+                    print("DEBUG: SQS_QUEUE_URL environment variable is not set. Skipping message deletion.")
+
+            except Exception as e:
+                print(f"Error processing SQS message: {e}")
+
+        return {
+            "statusCode": 200,
+            "message": "Processing completed successfully"
+        }
+
+    except Exception as e:
+        print(f"DEBUG: Error in Lambda function - {e}")
+        return {
+            "statusCode": 500,
+            "error": str(e),
+            "message": "Error processing the event"
         }
