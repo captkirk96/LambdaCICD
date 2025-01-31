@@ -30,7 +30,7 @@ def test_vehicle_lambda_handler(s3_client):
     """Test the vehicle detection lambda_handler function using an actual S3 image."""
 
     bucket_name = "frames-nht"
-    image_key = "vehicle_sample.jpg"  # Ensure this file exists in the S3 bucket
+    image_key = "download.jpeg"  # Ensure this file exists in the S3 bucket
 
     # Download actual image from S3
     local_image_path = "/tmp/vehicle_sample.jpg"
