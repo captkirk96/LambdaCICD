@@ -64,7 +64,7 @@ def fetch_image_from_s3(bucket_name, object_key,expiration=3600):
     
 def send_image_to_modal(modal_url, image_data):
     """
-    Sends an image to the Modal API for processing and returns the results.
+    Sends an  image to the Modal API for processing and returns the results.
     """
     headers = {'Content-Type': 'application/octet-stream'}
     
