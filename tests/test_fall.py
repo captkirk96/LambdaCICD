@@ -80,7 +80,7 @@ def test_lambda_handler(s3_client):
                                     "arn": "arn:aws:s3:::frames-nht"
                                 },
                                 "object": {
-                                    "key": "abm_video//278699821793_abm_video_1737974384719_e936a59a-7989-4240-9faa-0203483a1d7f%5B2025-01-27T10%3A39%3A50.103364%5D.jpg",
+                                    "key": "test.jpg",
                                     "size": 18295,
                                     "eTag": "9dd068214619420c8523e7a12b7e5fdd",
                                     "sequencer": "006797627628DF18BF"
