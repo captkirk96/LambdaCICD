@@ -46,27 +46,50 @@ def test_lambda_handler(s3_client):
     )
 
     # Mock event structure with the actual image key
-    event = {
+    event = {  # FIXED INDENTATION HERE
         "Records": [
             {
-                "eventVersion": "2.1",
-                "eventSource": "aws:s3",
-                "awsRegion": "ap-south-1",
-                "eventTime": "2025-01-27T10:39:50.206Z",
-                "eventName": "ObjectCreated:Put",
-                "s3": {
-                    "s3SchemaVersion": "1.0",
-                    "configurationId": "test-config",
-                    "bucket": {
-                        "name": "frames-nht",
-                        "arn": "arn:aws:s3:::frames-nht"
-                    },
-                    "object": {
-                        "key": "test.jpg",
-                        "size": 20480,
-                        "eTag": "d41d8cd98f00b204e9800998ecf8427e"
-                    }
-                }
+                "messageId": "518ae65b-13c4-4f28-900b-158ba0539706",
+                "receiptHandle": "test-receipt-handle",
+                "body": json.dumps({
+                    "Records": [
+                        {
+                            "eventVersion": "2.1",
+                            "eventSource": "aws:s3",
+                            "awsRegion": "ap-south-1",
+                            "eventTime": "2025-01-27T10:39:50.206Z",
+                            "eventName": "ObjectCreated:Put",
+                            "userIdentity": {
+                                "principalId": "AWS:AROAUBY6NZLQXQJFTD6HC:extract-frame-nht"
+                            },
+                            "requestParameters": {
+                                "sourceIPAddress": "65.1.3.147"
+                            },
+                            "responseElements": {
+                                "x-amz-request-id": "ZXR5FN9N1PQXKX3G",
+                                "x-amz-id-2": "ubogeIZalmTLgjHLGCPhfuYj6F4ZvoaNnN/SudnPJsA4IFk8WOw1IemEVwQtlWt6FVmhspm5iGZ204zlEm2Ic3KETkh7zGTj"
+                            },
+                            "s3": {
+                                "s3SchemaVersion": "1.0",
+                                "configurationId": "61a33a05-d8bb-4dc0-9c90-c909a90f66e7",
+                                "bucket": {
+                                    "name": "frames-nht",
+                                    "ownerIdentity": {
+                                        "principalId": "A1SOGSLXVL48HE"
+                                    },
+                                    "arn": "arn:aws:s3:::frames-nht"
+                                },
+                                "object": {
+                                    "key": "abm_video//278699821793_abm_video_1737974384719_e936a59a-7989-4240-9faa-0203483a1d7f%5B2025-01-27T10%3A39%3A50.103364%5D.jpg",
+                                    "size": 18295,
+                                    "eTag": "9dd068214619420c8523e7a12b7e5fdd",
+                                    "sequencer": "006797627628DF18BF"
+                                }
+                            }
+                        }
+                    ]
+                }),
+                "receiptHandle": "test-receipt-handle"
             }
         ]
     }
