@@ -10,7 +10,7 @@ os.environ['OUTPUT_BUCKET_NAME'] = 'your-output-bucket-name'
 os.environ["AWS_REGION"] = "ap-south-1"
 
 # Manually load the module using importlib
-lambda_module_path = os.path.join(os.path.dirname(__file__), "../lambdas/stateful/fall-detection-nht/lambda_function.py")
+lambda_module_path = os.path.join(os.path.dirname(__file__), "../lambdas/stateless/fall-detection-nht/lambda_function.py")
 
 spec = importlib.util.spec_from_file_location("lambda_function", lambda_module_path)
 lambda_module = importlib.util.module_from_spec(spec)
