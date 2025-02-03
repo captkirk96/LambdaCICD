@@ -64,7 +64,7 @@ def fetch_image_from_s3(bucket_name, object_key,expiration=3600):
     
 def send_image_to_modal(modal_url, image_data):
     """
-    Sends an  image to the Modal API for processing and returns the results.
+    Sends an image to the Modal API for processing and returns the results.
     """
     headers = {'Content-Type': 'application/octet-stream'}
     
@@ -153,7 +153,7 @@ def process_s3_event(s3_event):
         # Fetch the image data from the pre-signed URL
         response = fetch_image_from_s3(bucket_name, image_key,expiration=3600)
 
-        modal_url = "https://chris-m--vehicle-detector-tracker-detect-and-track.modal.run"
+        modal_url = "https://phronetic-ai--vehicle-detector-tracker-detect-and-track.modal.run"
         image_data = response.content
         vehicle_results = send_image_to_modal(modal_url, image_data)
         
