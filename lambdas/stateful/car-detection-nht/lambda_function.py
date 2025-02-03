@@ -13,7 +13,7 @@ s3_client = boto3.client('s3')
 
 def fetch_image_from_s3(bucket_name, object_key, expiration=3600):
     """
-    Generate a pre-signed URL to access the S3 object  and fetch the image.
+    Generate a pre-signed URL to access the S3 object and fetch the image.
     """
     try:
         presigned_url = s3_client.generate_presigned_url(
