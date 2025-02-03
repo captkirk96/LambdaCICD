@@ -1,88 +1,118 @@
+import cv2
 import boto3
 import json
 import os
 import requests
 import urllib.parse
-import tempfile
+import pymongo
+import datetime
+import re
 
 # Initialize S3 client
 s3_client = boto3.client('s3')
 
-def invoke_lambda(function_arn, payload):
+def fetch_image_from_s3(bucket_name, object_key, expiration=3600):
     """
-    Invoke a Lambda function asynchronously (using 'Event'  InvocationType).
+    Generate a pre-signed URL to access the S3 object and fetch the image.
     """
-    lambda_client = boto3.client('lambda')
+    # Generate the pre-signed URL
     try:
-        response = lambda_client.invoke(
-            FunctionName=function_arn,
-            InvocationType='Event',
-            Payload=json.dumps(payload)
+        presigned_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket_name, 'Key': object_key},
+            ExpiresIn=expiration
         )
-        print(f"Successfully invoked Lambda {function_arn}. Response: {response}")
     except Exception as e:
-        print(f"Error invoking Lambda: {e}")
+        raise Exception(f"Error generating pre-signed URL: {e}")
 
-def download_file_from_s3(bucket_name, key):
-    """Download a file from S3 and save it locally"""
+    # Fetch the image data from the pre-signed URL
     try:
-        print(f"DEBUG: Attempting to download {key} from bucket {bucket_name}")
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
-        s3_client.download_file(bucket_name, key, temp_file.name)
-        print(f"DEBUG: Successfully downloaded {key} to {temp_file.name}")
-        return temp_file
+        response = requests.get(presigned_url)
+        if response.status_code == 200:
+            print("Successfully downloaded image from S3 bucket")
+            return response  # Return the image data
+        else:
+            raise Exception(f"Failed to fetch image from S3: {response.status_code}")
     except Exception as e:
-        print(f"DEBUG: Error downloading {key} - {e}")
-        raise
-        
-def upload_file_to_s3(file_path, bucket_name, key):
-    """Upload a file to S3."""
-    try:
-        print(f"DEBUG: Uploading {file_path} to bucket {bucket_name} with key {key}")
-        s3_client.upload_file(file_path, bucket_name, key)
-        print(f"DEBUG: Successfully uploaded {key} to {bucket_name}")
-    except Exception as e:
-        print(f"DEBUG: Error uploading file to S3 - {e}")
-        raise
+        raise Exception(f"Error fetching image: {e}")
 
-def clean_up_temp_file(file):
-    try:
-        os.unlink(file.name)
-        print(f"DEBUG: Temporary file {file.name} deleted")
-    except Exception as e:
-        print(f"Error deleting temporary file {file.name}: {e}")
-
-def update_detection_status_json(final_bucket, image_key, detection_status_output, detector_name ):
+def send_image_to_modal(modal_url, image_data):
     """
-    Updates or creates a combined JSON file with the givenhuman and vehicle statuses for a frame.
+    Sends an image to the Modal API for processing and returns the results.
     """
-    # Extract directory name and form the JSON file name
-    directory_path = os.path.dirname(image_key)
-    directory_name = os.path.join(directory_path, detector_name + '.json')
-
-    # Check if the combined JSON file exists in the S3 bucket
+    headers = {'Content-Type': 'application/octet-stream'}
+    
     try:
-        detection_status_file = download_file_from_s3(final_bucket, directory_name)
-        with open(detection_status_file.name, 'r') as f:
-            detection_status_json = json.load(f)
-    except Exception:
-        detection_status_json = {}
+        # Sending the image data to Modal API
+        modal_response = requests.post(modal_url, data=image_data, headers=headers)
 
-    # Update or create a new entry for the frame
-    frame_id = os.path.basename(image_key).rsplit('.', 1)[0]
-    print(f"DEBUG: Updating frame_id: {frame_id}")
+        # Check if the response is successful
+        if modal_response.status_code == 200:
+            # Process and return the detection results
+            results = modal_response.json()
+            print(f"Detection Results: {results}")
+            return results
+        else:
+            # Raise exception if the response is not successful
+            print(f"Response Text: {modal_response.text}")
+            raise Exception(f"Modal API request failed with status code {modal_response.status_code}")
+    except Exception as e:
+        # Handle any exceptions that occur during the request
+        raise Exception(f"Error during Modal API request: {e}")
 
-    # Update or create a new entry for the frame
-    detection_status_json[frame_id] = detection_status_output
+def get_frame_stream_id(frame_name):
+    # Regular expression pattern
+    pattern = r"^(\d+)_.*?_(\d+)_"
 
-    # Save the updated combined JSON to a temporary file
-    updated_json_file = tempfile.NamedTemporaryFile(delete=False, suffix='.json')
-    with open(updated_json_file.name, 'w') as f:
-        json.dump(detection_status_json, f)
+    # Extract values
+    match = re.match(pattern, frame_name)
+    if match:
+        stream_id = match.group(1)  
+        frame_id = match.group(2)  
 
-    print(f"Updated {detector_name}.json with {frame_id}: {detection_status_output}")
+    print("Stream ID:", stream_id)
+    print("Frame ID:", frame_id)
+    return stream_id, frame_id
 
-    return directory_name, updated_json_file
+# MongoDB connection setup
+MONGO_URI = "mongodb+srv://aparnajayanv:1TB20dYCWmv1W4CQ@lambdacluster.ovcgx.mongodb.net/"  # MongoDB Atlas connection string
+DB_NAME = "lambda_outputs"  # MongoDB database name
+COLLECTION_NAME = "combined_output" # collection to store combined lambda outputs
+HUMAN_COLLECTION_NAME = "human_detection_output"
+
+# Connect to MongoDB Atlas
+mongo_client = pymongo.MongoClient(MONGO_URI)
+db = mongo_client[DB_NAME]
+combined_collection = db[COLLECTION_NAME]
+human_collection = db[HUMAN_COLLECTION_NAME]
+
+def store_output_in_mongo(collection, stream_id, detection_type, frame_id, detection_status):
+    try:
+        # Current timestamp
+        timestamp = datetime.datetime.utcnow().isoformat()
+
+        # Define the update query and update operation
+        query = {"stream_Id": stream_id}
+        update = {
+            "$set": {
+                "updated_at": timestamp,
+                f"{detection_type}.{frame_id}": detection_status
+            }
+        }
+        # Perform the upsert operation
+        collection.update_one(query, update, upsert=True)
+        return f"Successfully updated {detection_type} for {frame_id} in directory {stream_id}"
+    
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps(
+                {
+                    "error": str(e),
+                    "message": "Failed to update MongoDB",
+                }
+            ),
+        }
     
 def process_s3_event(s3_event):
     """
@@ -94,59 +124,35 @@ def process_s3_event(s3_event):
         object_key = s3_event['object']['key']
         object_key = urllib.parse.unquote(object_key)
 
-        output_bucket_name = os.environ['OUTPUT_BUCKET_NAME']
-
-        print(f"DEBUG: Processing file {object_key} from bucket {bucket_name}")
-
-        # Generate a pre-signed URL to access the S3 object
-        presigned_url = s3_client.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': bucket_name, 'Key': object_key},
-            ExpiresIn=3600
-        )
-
         # Fetch the image data from the pre-signed URL
-        response = requests.get(presigned_url)
-        if response.status_code == 200:
-            print("Successfully downloaded image from S3 bucket")
-        else:
-            raise Exception(f"Failed to fetch image from S3: {response.status_code}")
+        response = fetch_image_from_s3(bucket_name, object_key, expiration=3600)
 
         # Send the image data to the Modal web endpoint
-        modal_url = "https://aparna-j--person-detector-tracker-detect-and-track.modal.run"
-        headers = {'Content-Type': 'application/octet-stream'}
-        modal_response = requests.post(modal_url, data=response.content, headers=headers)
-
-        if modal_response.status_code == 200:
-            # Process the response from Modal
-            results = modal_response.json()
-            print(f"Detection Results: {results}")
-        else:
-            print(f"Response Text: {modal_response.text}")
-            raise Exception(f"Modal API request failed with status code {modal_response.status_code}")
+        modal_url = "https://phronetic-ai--person-detector-tracker-detect-and-track.modal.run"
+        image_data = response.content
+        results = send_image_to_modal(modal_url, image_data)
 
         # Determine the human detection status
         human_status = "No humans detected" if not results else results
 
-        # Prepare JSON payload for the next Lambda function
-        processed_payload = {
-            "bucket_name": bucket_name,
-            "image_key": object_key,
-            "human_status": human_status
+        frame_name = os.path.basename(object_key).rsplit('.', 1)[0]
+
+        try:
+            stream_id, frame_id = get_frame_stream_id(frame_name)
+        except Exception as e:
+            stream_id = os.path.dirname(object_key)
+            frame_id = frame_name
+
+        store_output_in_mongo(human_collection, stream_id, "human_status", frame_id, human_status) # store data in human collection
+        store_output_in_mongo(combined_collection, stream_id, "human_status", frame_id, human_status) # store data in combined collection
+
+        return {
+            "mongodb": db,
+            "mongodb_combined_collection": combined_collection,
+            "mongodb_human_collection" : human_collection,
+            "directory_name": stream_id,
+            "message": "Output data successfully saved in mongodb"
         }
-
-        # Invoke the next Lambda function
-        invoke_fn_arn = os.environ.get('INVOKE_FUNCTION_ARN')
-        if invoke_fn_arn:
-            invoke_lambda(invoke_fn_arn, processed_payload)
-        else:
-            print("DEBUG: INVOKE_FUNCTION_ARN environment variable is not set. Skipping Lambda invocation.")
-
-        directory_name, updated_json_file = update_detection_status_json(output_bucket_name, object_key, human_status, "human_status" )
-        # Upload the updated JSON to the "final-output1" bucket
-        upload_file_to_s3(updated_json_file.name, output_bucket_name, directory_name)
-
-        clean_up_temp_file(updated_json_file)
 
     except Exception as e:
         print(f"Error processing S3 event: {e}")
@@ -184,15 +190,8 @@ def lambda_handler(event, context):
             except Exception as e:
                 print(f"Error processing SQS message: {e}")
 
-        return {
-            "statusCode": 200,
-            "message": "Processing completed successfully"
-        }
+        return {"statusCode": 200, "message": "Processing completed successfully"}
 
     except Exception as e:
         print(f"DEBUG: Error in Lambda function - {e}")
-        return {
-            "statusCode": 500,
-            "error": str(e),
-            "message": "Error processing the event"
-        }
+        return {"statusCode": 500, "error": str(e), "message": "Error processing the event"}
