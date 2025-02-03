@@ -103,4 +103,5 @@ def test_lambda_handler(s3_client):
     print(f"Lambda response: {response}")
 
     assert "message" in response
-    assert "Combined JSON file updated successfully" in response["message"]
+    assert "Processing completed successfully" in response["message"]
+
