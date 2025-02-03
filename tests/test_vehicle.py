@@ -68,7 +68,7 @@ def test_lambda_handler(s3_client):
                                     "arn": "arn:aws:s3:::frames-nht"
                                 },
                                 "object": {
-                                    "key": "download.jpeg",
+                                    "key": "test.jpg",
                                     "size": 20480,
                                     "eTag": "d41d8cd98f00b204e9800998ecf8427e"
                                 }
