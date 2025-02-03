@@ -21,30 +21,28 @@ jobs:
           
           if echo "$CHANGED_FILES" | grep -q 'lambdas/stateful/person-detection-nht/lambda_function.py'; then
             echo "RUN_PERSON_TESTS=true" >> $GITHUB_ENV
-          else
-            echo "RUN_PERSON_TESTS=false" >> $GITHUB_ENV
           fi
           
           if echo "$CHANGED_FILES" | grep -q 'lambdas/stateful/car-detection-nht/lambda_function.py'; then
             echo "RUN_VEHICLE_TESTS=true" >> $GITHUB_ENV
-          else
-            echo "RUN_VEHICLE_TESTS=false" >> $GITHUB_ENV
           fi
           
           if echo "$CHANGED_FILES" | grep -q 'lambdas/stateless/fall-detection-nht/lambda_function.py'; then
             echo "RUN_FALL_TESTS=true" >> $GITHUB_ENV
-          else
-            echo "RUN_FALL_TESTS=false" >> $GITHUB_ENV
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q 'lambdas/stateless/fire-detection-nht/lambda_function.py'; then
+            echo "RUN_FIRE_TESTS=true" >> $GITHUB_ENV
           fi
 
       - name: Set up Python
-        if: env.RUN_PERSON_TESTS == 'true' || env.RUN_VEHICLE_TESTS == 'true' || env.RUN_FALL_TESTS == 'true'
+        if: env.RUN_PERSON_TESTS == 'true' || env.RUN_VEHICLE_TESTS == 'true' || env.RUN_FALL_TESTS == 'true' || env.RUN_FIRE_TESTS == 'true'
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
       - name: Install dependencies
-        if: env.RUN_PERSON_TESTS == 'true' || env.RUN_VEHICLE_TESTS == 'true' || env.RUN_FALL_TESTS == 'true'
+        if: env.RUN_PERSON_TESTS == 'true' || env.RUN_VEHICLE_TESTS == 'true' || env.RUN_FALL_TESTS == 'true' || env.RUN_FIRE_TESTS == 'true'
         run: |
           pip install pytest boto3 opencv-python-headless requests pymongo
 
@@ -73,6 +71,16 @@ jobs:
         run: |
           export PYTHONPATH=$(pwd)
           pytest tests/test_fall.py --capture=no
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: "ap-south-1"
+
+      - name: Run tests for fire detection
+        if: env.RUN_FIRE_TESTS == 'true'
+        run: |
+          export PYTHONPATH=$(pwd)
+          pytest tests/test_fire.py --capture=no
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
