@@ -15,7 +15,7 @@ s3 = boto3.client('s3')
 def download_file_from_s3(bucket_name, key):
     """Download a file from  S3 and save it locally."""
     try:
-        print(f"DEBUG: Attempting to download {key} from bucket {bucket_name}")
+        print(f"DEBUG: Attempting  to download {key} from bucket {bucket_name}")
         temp_file = tempfile.NamedTemporaryFile(delete=False)
         s3.download_file(bucket_name, key, temp_file.name)
         print(f"DEBUG: Successfully downloaded {key} to {temp_file.name}")
